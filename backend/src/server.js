@@ -2,7 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import detectPlatform from './utils/detectPlatform.js';
-import handleYouTubeVideo from './middlewares/youtubeVideoHandler.js'; 
+import handleYouTubeVideo from './middlewares/youtubeVideoHandler.js';
 
 const PORT = process.env.PORT || 5000;
 
@@ -29,7 +29,7 @@ app.post('/api/v1/download', async (req, res) => {
         switch (platform) {
             case 'youtube':
                 result = await handleYouTubeVideo(url);
-                break;  
+                break;
             case 'tiktok':
             case 'reddit':
             default:

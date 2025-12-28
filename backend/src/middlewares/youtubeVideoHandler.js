@@ -1,73 +1,63 @@
 import ytdl from '@distube/ytdl-core';
 
 /**
- * Handles YouTube video download requests
+ * Handles YouTube video download requests (production-ready with env variable)
  * @param {string} url - YouTube video URL
- * @returns {Promise<Object>} Video information and download links
+ * @returns {Promise<Object>} Video info and download links
  */
 const handleYouTubeVideo = async (url) => {
-    // Validate YouTube URL
-    if (!ytdl.validateURL(url)) {
-        throw new Error('Invalid YouTube URL');
-    }
+  if (!ytdl.validateURL(url)) throw new Error('Invalid YouTube URL');
 
-    // Get video information
-    const info = await ytdl.getInfo(url);
-    const { videoDetails, formats } = info;
+  // Read cookie from environment variable
+  const cookieHeader = process.env.YT_COOKIE || '';
 
-    if (!formats || formats.length === 0) {
-        throw new Error('No downloadable formats found');
-    }
+  // Fetch video info with cookie header (if provided)
+  const info = await ytdl.getInfo(url, {
+    requestOptions: cookieHeader ? { headers: { cookie: cookieHeader } } : {}
+  });
 
-    // Get best video format
-    const videoFormat = ytdl.chooseFormat(formats, {
-        quality: 'highestvideo',
-        filter: 'video'
-    });
+  const { videoDetails, formats } = info;
 
-    // Get best audio format
-    const audioFormat = ytdl.chooseFormat(formats, {
-        quality: 'highestaudio',
-        filter: 'audioonly'
-    });
+  if (!formats || formats.length === 0) {
+    throw new Error('No downloadable formats found');
+  }
 
-    // Get available qualities
-    const availableQualities = formats
-        .filter(f => f.hasVideo && f.hasAudio && f.qualityLabel)
-        .map(f => ({
-            quality: f.qualityLabel,
-            container: f.container,
-            sizeMB: f.contentLength
-                ? (Number(f.contentLength) / (1024 * 1024)).toFixed(2)
-                : null
-        }));
+  // Best video & audio formats
+  const videoFormat = ytdl.chooseFormat(formats, { quality: 'highestvideo', filter: 'video' });
+  const audioFormat = ytdl.chooseFormat(formats, { quality: 'highestaudio', filter: 'audioonly' });
 
-    return {
-        platform: 'youtube',
-        title: videoDetails.title,
-        originalUrl: url,
-        description: videoDetails.shortDescription?.slice(0, 500) || null,
-        durationSeconds: Number(videoDetails.lengthSeconds),
-        author: videoDetails.author?.name || null,
-        thumbnail: videoDetails.thumbnails?.at(-1)?.url || null,
-        download: {
-            video: {
-                url: videoFormat.url,
-                quality: videoFormat.qualityLabel,
-                container: videoFormat.container,
-                sizeMB: videoFormat.contentLength
-                    ? (Number(videoFormat.contentLength) / (1024 * 1024)).toFixed(2)
-                    : null
-            },
-            audio: {
-                url: audioFormat.url,
-                container: audioFormat.container,
-                bitrate: audioFormat.audioBitrate
-            }
-        },
-        availableQualities
-    };
+  // Available qualities for frontend display
+  const availableQualities = formats
+    .filter(f => f.hasVideo && f.hasAudio && f.qualityLabel)
+    .map(f => ({
+      quality: f.qualityLabel,
+      container: f.container,
+      sizeMB: f.contentLength ? (Number(f.contentLength) / (1024 * 1024)).toFixed(2) : null
+    }));
+
+  return {
+    platform: 'youtube',
+    title: videoDetails.title,
+    originalUrl: url,
+    description: videoDetails.shortDescription?.slice(0, 500) || null,
+    durationSeconds: Number(videoDetails.lengthSeconds),
+    author: videoDetails.author?.name || null,
+    thumbnail: videoDetails.thumbnails?.at(-1)?.url || null,
+    download: {
+      video: {
+        url: videoFormat.url,
+        quality: videoFormat.qualityLabel,
+        container: videoFormat.container,
+        sizeMB: videoFormat.contentLength ? (Number(videoFormat.contentLength) / (1024 * 1024)).toFixed(2) : null
+      },
+      audio: {
+        url: audioFormat.url,
+        container: audioFormat.container,
+        bitrate: audioFormat.audioBitrate
+      }
+    },
+    availableQualities
+  };
 };
 
 export default handleYouTubeVideo;
-
